@@ -95,30 +95,6 @@ jobs:
             }    
           }          
 
-      - name: list something
-        shell: powershell
-        run: |
-          get-disk
-          get-physicalDisk
-          get-partition
-          get-volume
-
-      - uses: actions/checkout@v2
-
-      - name: Download everything
-        shell: powershell
-        run: |
-          wget https://www.voidtools.com/Everything-1.4.1.1015.x64.en-US.zip -outfile Everything-1.4.1.1015.x64.en-US.zip
-          wget https://www.voidtools.com/ES-1.1.0.23.zip -outfile ES-1.1.0.23.zip
-          wget https://www.voidtools.com/Everything-1.4.1.1015.x64.en-US.zip -outfile C:\users\runneradmin\Everything-1.4.1.1015.x64.en-US.zip
-          wget https://www.voidtools.com/ES-1.1.0.23.zip -outfile C:\users\runneradmin\ES-1.1.0.23.zip
-
-      - name: Unzip everything
-        shell: cmd
-        run: |
-          unzip Everything-1.4.1.1015.x64.en-US.zip
-          unzip ES-1.1.0.23.zip
-      
       - name: Send Report
         uses: softprops/action-gh-release@v1
         if: ${{ failure() }}
