@@ -33,48 +33,50 @@ jobs:
           for ( $HDDSize = $( $Size_low_blocks * $BlockSize ) ; $HDDSize -ne $( $Size_high_blocks * $BlockSize ) ; $HDDSize = $HDDSize + $BlockSize ){ 
             for ( $SSDSize = $( $Size_low_blocks * $BlockSize ) ; $SSDSize -ne $( $Size_high_blocks * $BlockSize ) ; $SSDSize = $SSDSize + $BlockSize ){
               try{
-                New-datavhd -Path D:\SSD.vhd -Size $SSDSize -dynamic -Confirm:$false -force
-                New-datavhd -Path D:\HDD.vhd -Size $HDDSize -dynamic -Confirm:$false -force
-                $SSD = Get-disk -number $($(Mount-DiskImage -ImagePath D:\SSD.vhd).number) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false -PassThru | Get-PhysicalDisk | Reset-PhysicalDisk -PassThru
-                $HDD = Get-disk -number $($(Mount-DiskImage -ImagePath D:\HDD.vhd).number) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$false -PassThru | Get-PhysicalDisk | Reset-PhysicalDisk -PassThru
+                $VG = $null
+                $LV = $null
+                New-datavhd -Path D:\SSD.vhd -Size $SSDSize -dynamic -Confirm:$False -force
+                New-datavhd -Path D:\HDD.vhd -Size $HDDSize -dynamic -Confirm:$False -force
+                $SSD = Get-disk -number $( $( Mount-DiskImage -ImagePath D:\SSD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Reset-PhysicalDisk -PassThru
+                $HDD = Get-disk -number $( $( Mount-DiskImage -ImagePath D:\HDD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Reset-PhysicalDisk -PassThru
                 Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
                 Write-Output "DiskSize: ( $HDDSize , $SSDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
                 Write-Output "Create StoragePool" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                $VG = New-StoragePool -FriendlyName VG -Physicaldisks @( $SSD , $HDD ) -StorageSubSystemFriendlyName (Get-StorageSubSystem).FriendlyName -WriteCacheSizeDefault 0
-                $SSD | Set-Physicaldisk -MediaType SSD
-                $HDD | Set-Physicaldisk -MediaType HDD
-                $SSDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName SSDTier -MediaType SSD -ResiliencySettingName Simple
-                $HDDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName HDDTier -MediaType HDD -ResiliencySettingName Simple
-                $SSDTierSupportedSize = $SSDTier | Get-StorageTierSupportedSize
-                $HDDTierSupportedSize = $HDDTier | Get-StorageTierSupportedSize
-                $SSDTierDivisorBlockMax = [int64][math]::Round( $($SSDTierSupportedSize.TierSizeMax) / $($SSDTierSupportedSize.TierSizeDivisor) , [MidpointRounding]::ToNegativeInfinity )
-                $HDDTierDivisorBlockMax = [int64][math]::Round( $($HDDTierSupportedSize.TierSizeMax) / $($HDDTierSupportedSize.TierSizeDivisor) , [MidpointRounding]::ToNegativeInfinity )
-                $SSDTierDivisorBlock = ($SSDTierDivisorBlockMax - $SSDTierReseverDivisorBlock)
-                $HDDTierDivisorBlock = ($HDDTierDivisorBlockMax - $HDDTierReseverDivisorBlock)
-                $SSDTierSize = [int64]( $SSDTierDivisorBlock * $($SSDTierSupportedSize.TierSizeDivisor) )
-                $HDDTierSize = [int64]( $HDDTierDivisorBlock * $($HDDTierSupportedSize.TierSizeDivisor) )
-                $SSDRemain = [int64]( $($SSD.Size) - $($SSD.allocatedSize) )
-                $HDDRemain = [int64]( $($HDD.Size) - $($HDD.allocatedSize) )
-                #$WriteCacheSize = [int64]( $($SSDTierSupportedSize.TierSizeMax) * $WriteCacheSpace )
-                Write-Output "DivisorSizes: ( $($SSDTierSupportedSize.TierSizeDivisor), $($HDDTierSupportedSize.TierSizeDivisor) )"  | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "TierSizeMax: ( $($SSDTierSupportedSize.TierSizeMax) , $($HDDTierSupportedSize.TierSizeMax) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "DiskSize: ( $HDDSize , $SSDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "TierDivisorBlockMax: ( $SSDTierDivisorBlockMax , $HDDTierDivisorBlockMax )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "TierDivisorBlock: ( $SSDTierDivisorBlock , $HDDTierDivisorBlock )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "TierReseverDivisorBlock: ( $SSDTierReseverDivisorBlock , $HDDTierReseverDivisorBlock )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "TierSizes: ( $SSDTierSize , $HDDTierSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "DiskRemain: ( $SSDRemain , $HDDRemain )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "DiskAllocated: ( $($SSD.allocatedSize) , $($HDD.allocatedSize) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                Write-Output "Create Virtualdisk" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                $LV = $( New-VirtualDisk -StoragePoolFriendlyName VG -FriendlyName LV -StorageTiers @($SSDTier , $HDDTier) -StorageTierSizes @($SSDTierSize , $HDDTierSize) -ResiliencySettingName Simple -WriteCacheSize 0)
-                if ($LV -ne $null) {
-                  $HDD = Get-Physicaldisk | where physicallocation -eq "D:\HDD.vhd"
-                  $SSD = Get-Physicaldisk | where physicallocation -eq "D:\SSD.vhd"
-                  $SSDRemain = [int64]( $($SSD.Size) - $($SSD.allocatedSize) )
-                  $HDDRemain = [int64]( $($HDD.Size) - $($HDD.allocatedSize) )
-                  Write-Output "DiskRemain: ( $SSDRemain, $HDDRemain )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                  Write-Output "DiskAllocated: ( $($SSD.allocatedSize) , $($HDD.allocatedSize) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                  remove-virtualdisk -FriendlyName LV -Confirm:$false
+                $VG = New-StoragePool -FriendlyName VG -Physicaldisks @( $SSD , $HDD ) -StorageSubSystemFriendlyName ( Get-StorageSubSystem ).FriendlyName -WriteCacheSizeDefault 0
+                if ( $VG -ne $null ){
+                  $SSDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName SSDTier -MediaType SSD -ResiliencySettingName Simple
+                  $HDDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName HDDTier -MediaType HDD -ResiliencySettingName Simple
+                  $SSDTierSupportedSize = $SSDTier | Get-StorageTierSupportedSize
+                  $HDDTierSupportedSize = $HDDTier | Get-StorageTierSupportedSize
+                  $SSDTierDivisorBlockMax = [int64][math]::Round( $( $SSDTierSupportedSize.TierSizeMax ) / $( $SSDTierSupportedSize.TierSizeDivisor ) , [MidpointRounding]::ToNegativeInfinity )
+                  $HDDTierDivisorBlockMax = [int64][math]::Round( $( $HDDTierSupportedSize.TierSizeMax ) / $( $HDDTierSupportedSize.TierSizeDivisor ) , [MidpointRounding]::ToNegativeInfinity )
+                  $SSDTierDivisorBlock = ( $SSDTierDivisorBlockMax - $SSDTierReseverDivisorBlock )
+                  $HDDTierDivisorBlock = ( $HDDTierDivisorBlockMax - $HDDTierReseverDivisorBlock )
+                  $SSDTierSize = [int64]( $SSDTierDivisorBlock * $( $SSDTierSupportedSize.TierSizeDivisor ) )
+                  $HDDTierSize = [int64]( $HDDTierDivisorBlock * $( $HDDTierSupportedSize.TierSizeDivisor ) )
+                  $SSDRemain = [int64]( $( $SSD.Size ) - $( $SSD.allocatedSize ) )
+                  $HDDRemain = [int64]( $( $HDD.Size ) - $( $HDD.allocatedSize ) )
+                  Write-Output "DivisorSizes: ( $( $SSDTierSupportedSize.TierSizeDivisor ), $( $HDDTierSupportedSize.TierSizeDivisor ) )"  | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "TierSizeMax: ( $( $SSDTierSupportedSize.TierSizeMax ) , $( $HDDTierSupportedSize.TierSizeMax ) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "DiskSize: ( $HDDSize , $SSDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "TierDivisorBlockMax: ( $SSDTierDivisorBlockMax , $HDDTierDivisorBlockMax )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "TierDivisorBlock: ( $SSDTierDivisorBlock , $HDDTierDivisorBlock )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "TierReseverDivisorBlock: ( $SSDTierReseverDivisorBlock , $HDDTierReseverDivisorBlock )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "TierSizes: ( $SSDTierSize , $HDDTierSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "DiskRemain: ( $SSDRemain , $HDDRemain )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "DiskAllocated: ( $( $SSD.allocatedSize ) , $( $HDD.allocatedSize ) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  Write-Output "Create Virtualdisk" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                  $LV = New-VirtualDisk -StoragePoolFriendlyName VG -FriendlyName LV -StorageTiers @( $SSDTier , $HDDTier ) -StorageTierSizes @( $SSDTierSize , $HDDTierSize ) -ResiliencySettingName Simple -WriteCacheSize 0
+                  if ( $LV -ne $null ) {
+                    $SSD = Get-Physicaldisk | where physicallocation -eq "D:\SSD.vhd"
+                    $HDD = Get-Physicaldisk | where physicallocation -eq "D:\HDD.vhd"
+                    $SSDRemain = [int64]( $( $SSD.Size ) - $( $SSD.allocatedSize ) )
+                    $HDDRemain = [int64]( $( $HDD.Size ) - $( $HDD.allocatedSize ) )
+                    Write-Output "DiskRemain: ( $SSDRemain , $HDDRemain )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                    Write-Output "DiskAllocated: ( $( $SSD.allocatedSize ) , $( $HDD.allocatedSize ) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+                    remove-virtualdisk -FriendlyName LV -Confirm:$False
+                  }
+                  Remove-Virtualdisk -FriendlyName VG -Confirm:$False
                 }
               }
             }    
