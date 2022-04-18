@@ -51,7 +51,10 @@ jobs:
                   $VG = New-StoragePool -FriendlyName VG -Physicaldisks @( $SSD , $HDD ) -StorageSubSystemFriendlyName ( Get-StorageSubSystem ).FriendlyName -WriteCacheSizeDefault 0
                 }
                 catch{
-                  Write-Output "StoragePool Create Failed" | Add-Content =Path report.txt -PassThru
+                  Write-Output "StoragePool Create Failed" | Add-Content -Path report.txt -PassThru
+                }
+                finally{
+                  Write-Output "StoragePool Create Success" | Add-Content -Path report.txt -PassThru
                 }
                 if ( $VG -ne $null ){
                   $SSDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName SSDTier -MediaType SSD -ResiliencySettingName Simple
@@ -81,6 +84,9 @@ jobs:
                   }
                   catch{
                     Write-Output "Virtual StorageTier Disk Create Failed" | Add-Content -Path report.txt -PassThru
+                  }
+                  finally{
+                    Write-Output "Virtual StorageTier Disk Create Success" | Add-Content -Path report.txt -PassThru
                   }
                   if ( $LV -ne $null ) {
                     $SSD = Get-Physicaldisk | where physicallocation -eq "D:\SSD.vhd"
