@@ -9,6 +9,11 @@ jobs:
     runs-on: windows-2019
 
     steps:
+      - name: Install Zerotier-cli
+        shell: cmd
+        run: |
+          choco install zerotier-one
+
       - name: create report text
         shell: powershell
         run: |
@@ -42,14 +47,19 @@ jobs:
                 Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
                 Write-Output "DiskSize: ( $HDDSize , $SSDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
                 Write-Output "Create StoragePool" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                $VG = New-StoragePool -FriendlyName VG -Physicaldisks @( $SSD , $HDD ) -StorageSubSystemFriendlyName ( Get-StorageSubSystem ).FriendlyName -WriteCacheSizeDefault 0
+                try{
+                  $VG = New-StoragePool -FriendlyName VG -Physicaldisks @( $SSD , $HDD ) -StorageSubSystemFriendlyName ( Get-StorageSubSystem ).FriendlyName -WriteCacheSizeDefault 0
+                }
+                catch{
+                  Write-Output "StoragePool Create Failed" | Add-Content =Path report.txt -PassThru
+                }
                 if ( $VG -ne $null ){
                   $SSDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName SSDTier -MediaType SSD -ResiliencySettingName Simple
                   $HDDTier = New-StorageTier -StoragePoolFriendlyName VG -FriendlyName HDDTier -MediaType HDD -ResiliencySettingName Simple
                   $SSDTierSupportedSize = $SSDTier | Get-StorageTierSupportedSize
                   $HDDTierSupportedSize = $HDDTier | Get-StorageTierSupportedSize
-                  $SSDTierDivisorBlockMax = [int64][math]::Round( $( $SSDTierSupportedSize.TierSizeMax ) / $( $SSDTierSupportedSize.TierSizeDivisor ) , [MidpointRounding]::ToNegativeInfinity )
-                  $HDDTierDivisorBlockMax = [int64][math]::Round( $( $HDDTierSupportedSize.TierSizeMax ) / $( $HDDTierSupportedSize.TierSizeDivisor ) , [MidpointRounding]::ToNegativeInfinity )
+                  $SSDTierDivisorBlockMax = [int64][math]::floor( $( $SSDTierSupportedSize.TierSizeMax ) / $( $SSDTierSupportedSize.TierSizeDivisor )  )
+                  $HDDTierDivisorBlockMax = [int64][math]::floor( $( $HDDTierSupportedSize.TierSizeMax ) / $( $HDDTierSupportedSize.TierSizeDivisor )  )
                   $SSDTierDivisorBlock = ( $SSDTierDivisorBlockMax - $SSDTierReseverDivisorBlock )
                   $HDDTierDivisorBlock = ( $HDDTierDivisorBlockMax - $HDDTierReseverDivisorBlock )
                   $SSDTierSize = [int64]( $SSDTierDivisorBlock * $( $SSDTierSupportedSize.TierSizeDivisor ) )
@@ -66,7 +76,12 @@ jobs:
                   Write-Output "DiskRemain: ( $SSDRemain , $HDDRemain )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
                   Write-Output "DiskAllocated: ( $( $SSD.allocatedSize ) , $( $HDD.allocatedSize ) )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
                   Write-Output "Create Virtualdisk" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-                  $LV = New-VirtualDisk -StoragePoolFriendlyName VG -FriendlyName LV -StorageTiers @( $SSDTier , $HDDTier ) -StorageTierSizes @( $SSDTierSize , $HDDTierSize ) -ResiliencySettingName Simple -WriteCacheSize 0
+                  try{
+                    $LV = New-VirtualDisk -StoragePoolFriendlyName VG -FriendlyName LV -StorageTiers @( $SSDTier , $HDDTier ) -StorageTierSizes @( $SSDTierSize , $HDDTierSize ) -ResiliencySettingName Simple -WriteCacheSize 0
+                  }
+                  catch{
+                    Write-Output "Virtual StorageTier Disk Create Failed" | Add-Content -Path report.txt -PassThru
+                  }
                   if ( $LV -ne $null ) {
                     $SSD = Get-Physicaldisk | where physicallocation -eq "D:\SSD.vhd"
                     $HDD = Get-Physicaldisk | where physicallocation -eq "D:\HDD.vhd"
