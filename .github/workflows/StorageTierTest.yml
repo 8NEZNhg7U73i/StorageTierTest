@@ -9,11 +9,6 @@ jobs:
     runs-on: windows-2019
 
     steps:
-      - name: Install Zerotier-cli
-        shell: cmd
-        run: |
-          choco install zerotier-one
-
       - name: create report text
         shell: powershell
         run: |
@@ -25,11 +20,15 @@ jobs:
         #if: github.event_name == 'rase'
         shell: powershell
         run: |
-          Install-Module WindowsImagetools -force
+          Install-Module ModuleBuilder -force
+          git clone https://github.com/8NEZNhg7U73i/WindowsImageTools $HOME
+          cd $HOME\WindowsImageTools\WindowsImageTools
+          Build-module -Output ( $HOME | Join-Path -ChildPath WindowsImageTools)
 
       - name: Storage Tier Test
         shell: powershell
         run: |
+          Import-Module $( $HOME | Join-Path -ChildPath WindowsImageTools ) -force
           $Size_low=4GB
           $Size_high=20GB
           $BlockSize=256MB
@@ -49,10 +48,10 @@ jobs:
               }
               $VG = $null
               $LV = $null
-              New-datavhd -Path D:\SSD.vhd -Size $SSDSize -dynamic -Confirm:$False -force
-              New-datavhd -Path D:\HDD.vhd -Size $HDDSize -dynamic -Confirm:$False -force
-              Get-disk -number $( $( Mount-DiskImage -ImagePath D:\SSD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable SSD | Reset-PhysicalDisk
-              Get-disk -number $( $( Mount-DiskImage -ImagePath D:\HDD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable HDD | Reset-PhysicalDisk
+              Initialize-VHDPartition -Path D:\SSD.vhd -Size $SSDSize -dynamic -DiskLayOut Null -Confirm:$False -force -PassThru | Mount-DiskImage | Get-Disk | Get-Physicaldisk | Tee-Object -Variable SSD | Out-Null
+              Initialize-VHDPartition -Path D:\HDD.vhd -Size $HDDSize -dynamic -DiskLayOut Null -Confirm:$False -force -PassThru | Mount-DiskImage | Get-Disk | Get-Physicaldisk | Tee-Object -Variable HDD | Out-Null
+              #Get-disk -number $( $( Mount-DiskImage -ImagePath D:\SSD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable SSD | Reset-PhysicalDisk
+              #Get-disk -number $( $( Mount-DiskImage -ImagePath D:\HDD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable HDD | Reset-PhysicalDisk
               Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               Write-Output "DiskSize: ( $HDDSize , $SSDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               Write-Output "Create StoragePool" | Add-Content -Path report.txt -Encoding Ascii -PassThru
@@ -70,9 +69,8 @@ jobs:
                     $SSDTierDivisorBlockMax = [int64][math]::floor( $( $SSDTierSupportedSize.TierSizeMax ) / $( $SSDTierSupportedSize.TierSizeDivisor ) )
                     $HDDTierDivisorBlockMax = [int64][math]::floor( $( $HDDTierSupportedSize.TierSizeMax ) / $( $HDDTierSupportedSize.TierSizeDivisor ) )
                   }
-                  catch{
-                    Out-null
-                  }  
+                  catch{                  
+                  }
                   $SSDTierDivisorBlock = ( $SSDTierDivisorBlockMax - $SSDTierReseverDivisorBlock )
                   $HDDTierDivisorBlock = ( $HDDTierDivisorBlockMax - $HDDTierReseverDivisorBlock )
                   $SSDTierSize = [int64]( $SSDTierDivisorBlock * $( $SSDTierSupportedSize.TierSizeDivisor ) )
