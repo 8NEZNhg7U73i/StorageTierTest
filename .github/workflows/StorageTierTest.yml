@@ -21,7 +21,7 @@ jobs:
         shell: powershell
         run: |
           Install-Module ModuleBuilder -force
-          git clone https://github.com/8NEZNhg7U73i/WindowsImageTools $HOME
+          git clone https://github.com/8NEZNhg7U73i/WindowsImageTools $HOME\WindowsImageTools
           cd $HOME\WindowsImageTools\WindowsImageTools
           Build-module -Output ( $HOME | Join-Path -ChildPath WindowsImageTools)
 
