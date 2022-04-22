@@ -34,8 +34,8 @@ jobs:
           $BlockSize=256MB
           $SSDTierReseverDivisorBlock = 4
           $HDDTierReseverDivisorBlock = 4
-          for ( $HDDSize = $( $Size_low ) ; $HDDSize -le $( $Size_high ) ; $HDDSize = $HDDSize + $BlockSize ){ 
-            for ( $SSDSize = $( $Size_low ) ; $SSDSize -le $( $Size_high ) ; $SSDSize = $SSDSize + $BlockSize ){
+          for ( $SSDSize = $( $Size_low ) ; $SSDSize -le $( $Size_high ) ; $SSDSize = $SSDSize + $BlockSize ){ 
+            for ( $HDDSize = $( $Size_low ) ; $HDDSize -le $( $Size_high ) ; $HDDSize = $HDDSize + $BlockSize ){
               Get-virtualdisk | Where-Object FriendlyName -eq LV | Remove-virtualdisk -Confirm:$False
               Get-Storagepool | Where-Object FriendlyName -eq VG | Remove-StoragePool -Confirm:$False
               if ( Test-Path -Path D:\SSD.vhd ){
@@ -53,7 +53,7 @@ jobs:
               #Get-disk -number $( $( Mount-DiskImage -ImagePath D:\SSD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable SSD | Reset-PhysicalDisk
               #Get-disk -number $( $( Mount-DiskImage -ImagePath D:\HDD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable HDD | Reset-PhysicalDisk
               Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
-              Write-Output "DiskSize: ( $HDDSize , $SSDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
+              Write-Output "DiskSize: ( $SSDSize , $HDDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               Write-Output "Create StoragePool" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               try{
                 $VG = New-StoragePool -FriendlyName VG -Physicaldisks @( $SSD , $HDD ) -StorageSubSystemFriendlyName ( Get-StorageSubSystem ).FriendlyName -WriteCacheSizeDefault 0 -ErrorAction Stop
