@@ -29,11 +29,12 @@ jobs:
         shell: powershell
         run: |
           Import-Module $( $HOME | Join-Path -ChildPath WindowsImageTools ) -force
-          $Size_low=4GB
-          $Size_high=20GB
+          $Size_low=5GB
+          $Size_high=15GB
           $BlockSize=256MB
           $SSDTierReseverDivisorBlock = 4
           $HDDTierReseverDivisorBlock = 4
+          Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
           for ( $SSDSize = $( $Size_low ) ; $SSDSize -le $( $Size_high ) ; $SSDSize = $SSDSize + $BlockSize ){ 
             for ( $HDDSize = $( $Size_low ) ; $HDDSize -le $( $Size_high ) ; $HDDSize = $HDDSize + $BlockSize ){
               Get-virtualdisk | Where-Object FriendlyName -eq LV | Remove-virtualdisk -Confirm:$False
@@ -52,7 +53,6 @@ jobs:
               Initialize-VHDPartition -Path D:\HDD.vhd -Size $HDDSize -dynamic -DiskLayOut Null -Confirm:$False -force -PassThru | Mount-DiskImage | Get-Disk | Get-Physicaldisk | Tee-Object -Variable HDD | Out-Null
               #Get-disk -number $( $( Mount-DiskImage -ImagePath D:\SSD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable SSD | Reset-PhysicalDisk
               #Get-disk -number $( $( Mount-DiskImage -ImagePath D:\HDD.vhd ).number ) | Clear-Disk -RemoveData -RemoveOEM -Confirm:$False -PassThru | Get-PhysicalDisk | Tee-Object -Variable HDD | Reset-PhysicalDisk
-              Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               Write-Output "DiskSize: ( $SSDSize , $HDDSize )" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               Write-Output "Create StoragePool" | Add-Content -Path report.txt -Encoding Ascii -PassThru
               try{
