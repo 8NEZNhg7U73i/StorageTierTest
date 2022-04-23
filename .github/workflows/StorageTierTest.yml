@@ -112,14 +112,14 @@ jobs:
         with:
           files: report.txt
           tag_name: "test"
-          body_Path: report.txt
+          #body_Path: report.txt
 
       - name: Send Report
         uses: softprops/action-gh-release@v1
         with:
           files: report.txt
           tag_name: "test"
-          body_Path: report.txt
+          #body_Path: report.txt
 
       - name: Start SSH session
         uses: luchihoratiu/debug-via-ssh@main
