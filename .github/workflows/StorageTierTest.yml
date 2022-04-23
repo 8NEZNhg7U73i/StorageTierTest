@@ -34,9 +34,9 @@ jobs:
           $BlockSize=256MB
           $SSDTierReseverDivisorBlock = 4
           $HDDTierReseverDivisorBlock = 4
-          Write-Output "" | Add-Content -Path report.txt -Encoding Ascii -PassThru
           for ( $SSDSize = $( $Size_low ) ; $SSDSize -le $( $Size_high ) ; $SSDSize = $SSDSize + $BlockSize ){ 
             for ( $HDDSize = $( $Size_low ) ; $HDDSize -le $( $Size_high ) ; $HDDSize = $HDDSize + $BlockSize ){
+              Write-Output " " | Add-Content -Path report.txt -Encoding Ascii -PassThru
               Get-virtualdisk | Where-Object FriendlyName -eq LV | Remove-virtualdisk -Confirm:$False
               Get-Storagepool | Where-Object FriendlyName -eq VG | Remove-StoragePool -Confirm:$False
               if ( Test-Path -Path D:\SSD.vhd ){
